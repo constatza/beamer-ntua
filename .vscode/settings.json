@@ -1,0 +1,28 @@
+{
+  "latex-workshop.view.pdf.viewer": "tab",
+  "latex-workshop.latex.outDir": "%DIR%/.build",
+  "latex-workshop.latex.recipe.default": "first",
+  "latex-workshop.latex.tools": [
+    {
+      "name": "latexmk-ntuabeamer",
+      "command": "latexmk",
+      "args": [
+        "-cd",
+        "-pdf",
+        "-interaction=nonstopmode",
+        "-halt-on-error",
+        "-file-line-error",
+        "-synctex=1",
+        "%DOC%"
+      ]
+    }
+  ],
+  "latex-workshop.latex.recipes": [
+    {
+      "name": "latexmk (deck-local .build)",
+      "tools": [
+        "latexmk-ntuabeamer"
+      ]
+    }
+  ]
+}

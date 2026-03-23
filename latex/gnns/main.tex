@@ -1,0 +1,362 @@
+\documentclass[10pt,aspectratio=169]{ntuabeamer}
+
+\graphicspath{{latex/gnns/assets/}{assets/}}
+
+\defineslidesource{distill2021}{Sanchez-Lengeling, Reif, Pearce, Wiltschko. \emph{A Gentle Introduction to Graph Neural Networks}. Distill, 2021.}
+\defineslidesource{kipf2017}{Kipf, Welling. \emph{Semi-Supervised Classification with Graph Convolutional Networks}. ICLR, 2017.}
+\defineslidesource{hamilton2017}{Hamilton, Ying, Leskovec. \emph{Inductive Representation Learning on Large Graphs}. NeurIPS, 2017.}
+\defineslidesource{velickovic2018}{Velickovic et al. \emph{Graph Attention Networks}. ICLR, 2018.}
+
+\title{Graph Neural Networks}
+\subtitle{A concise introduction to graph representation learning and message passing}
+\author{NTUA School of Civil Engineering}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}[plain]
+  \makepresentationtitle
+\end{frame}
+
+% TODO: Add a toy graph diagram with 5--6 nodes, node features, and a highlighted neighborhood.
+\begin{frame}{Notation}
+  \small
+  \twocols{%
+    \[
+      G = (V, E), \qquad N = |V|
+    \]
+    \[
+      \bd{X} \in \mathbb{R}^{N \times F}, \qquad \bd{H}^{(0)} = \bd{X}
+    \]
+    \[
+      A \in \mathbb{R}^{N \times N}
+    \]
+    \[
+      \hat{A} =
+      \begin{cases}
+        A & \text{without self-loops} \\
+        A + I & \text{with self-loops}
+      \end{cases}
+    \]
+  }{%
+    \[
+      \hat{d}_v = \sum_{u=1}^{N} \hat{A}_{vu}, \qquad
+      \hat{D} = \operatorname{diag}(\hat{d}_1, \dots, \hat{d}_N)
+    \]
+    \[
+      \hat{\mathcal N}(v) = \{u : \hat{A}_{vu} \neq 0\}
+    \]
+    \[
+      \hat{A}_{vu} \in \{0, 1\}
+      \qquad \text{or} \qquad
+      \hat{A}_{vu} \in \mathbb{R}
+    \]
+    \vspace{0.15cm}
+
+    The same notation will be used throughout for binary and weighted graphs, following the Distill overview\slideref{distill2021}. The notation remains consistent with that exposition\slideref{distill2021}.
+  }
+\end{frame}
+
+% TODO: Add a three-panel visual showing node-level, edge-level, and graph-level prediction examples.
+\begin{frame}{Tasks}
+  \threecols{%
+    \textcolor{ntuablue}{Graph-level}
+    \begin{itemize}
+      \item Molecular property prediction
+      \item Whole-graph regression
+    \end{itemize}
+  }{%
+    \textcolor{ntuablue}{Node-level}
+    \begin{itemize}
+      \item Citation node classification
+      \item Community or role prediction
+    \end{itemize}
+  }{%
+    \textcolor{ntuablue}{Edge-level}
+    \begin{itemize}
+      \item Link prediction
+      \item Relation prediction
+    \end{itemize}
+  }
+\end{frame}
+
+% TODO: Add a pipeline diagram: encoder -> L message-passing layers -> task-specific decoder.
+\begin{frame}{Common GNN Architecture}
+  \twocols[0.41\textwidth][0.55\textwidth]{%
+    \begin{enumerate}
+      \item Encoding: raw inputs are mapped to latent representations.
+      \item Message passing / processing: apply \(L\) graph layers.
+      \item Decoding: map final embeddings to predictions.
+    \end{enumerate}
+  }{%
+    \[
+      \bd{H}^{(0)} = \operatorname{ENC}_{V}(\bd{X}),
+      \qquad
+      \bd{E}^{(0)} = \operatorname{ENC}_{E}\!\left(\bd{E}_{\mathrm{raw}}\right)
+    \]
+    \[
+      \bd{H}^{(k+1)} = f^{(k)}\!\left(\bd{H}^{(k)}, \hat{A}\right),
+      \qquad k = 0, \dots, L-1
+    \]
+    \[
+      \hat{y}_{v} = \operatorname{DEC}_{\mathrm{node}}\!\left(\bd{h}_{v}^{(L)}\right)
+    \]
+    \[
+      \hat{y}_{uv} =
+      \operatorname{DEC}_{\mathrm{edge}}\!\left(
+        \bd{h}_{u}^{(L)}, \bd{h}_{v}^{(L)}
+      \right)
+    \]
+    \[
+      \bd{h}_{G} =
+      \operatorname{READOUT}\!\left(
+        \{\bd{h}_{v}^{(L)} : v \in V\}
+      \right)
+    \]
+    \[
+      \hat{y}_{G} = \operatorname{DEC}_{\mathrm{graph}}\!\left(\bd{h}_{G}\right)
+    \]
+  }
+\end{frame}
+
+\begin{frame}{Propagation Template}
+  \[
+    \bd{H}^{(k+1)} =
+    \sigma\!\left(P^{(k)} \bd{H}^{(k)} \bd{W}^{(k)}\right)
+  \]
+
+  \vspace{0.2cm}
+
+  \begin{itemize}
+    \item \(P^{(k)}\) is the propagation operator that mixes information across the graph.
+    \item \(\bd{W}^{(k)}\) is a learnable weight matrix.
+    \item Different GNN layers mainly differ in how they define \(P^{(k)}\) or its local aggregation rule.
+  \end{itemize}
+\end{frame}
+
+% TODO: Add a small neighborhood-averaging sketch with normalized incoming edge weights.
+\begin{frame}{Simple Weighted Averaging}
+  \[
+    P = \hat{D}^{-1}\hat{A}
+  \]
+
+  \vspace{-0.12cm}
+  \[
+    \bd{h}_{v}^{(k+1)} =
+    \sigma\!\left(
+      \sum_{u \in \hat{\mathcal N}(v)}
+      \frac{\hat{A}_{vu}}{\hat{d}_{v}} \,
+      \bd{h}_{u}^{(k)} \bd{W}^{(k)}
+    \right)
+  \]
+
+  \vspace{-0.12cm}
+  \[
+    \bd{H}^{(k+1)} =
+    \sigma\!\left(
+      \hat{D}^{-1}\hat{A}\,\bd{H}^{(k)} \bd{W}^{(k)}
+    \right)
+  \]
+
+  \begin{itemize}
+    \item Row-normalized weighted neighborhood average
+    \item Valid for binary or real-valued edges
+  \end{itemize}
+\end{frame}
+
+% TODO: Add a comparison visual between row-normalized propagation and symmetric normalization.
+\begin{frame}{GCN\slideref{kipf2017}}
+  \[
+    P = \hat{D}^{-1/2}\hat{A}\hat{D}^{-1/2}
+  \]
+
+  \vspace{-0.12cm}
+  \[
+    \bd{h}_{v}^{(k+1)} =
+    \sigma\!\left(
+      \sum_{u \in \hat{\mathcal N}(v)}
+      \frac{\hat{A}_{vu}}{\sqrt{\hat{d}_{v}\hat{d}_{u}}} \,
+      \bd{h}_{u}^{(k)} \bd{W}^{(k)}
+    \right)
+  \]
+
+  \vspace{-0.12cm}
+  \[
+    \bd{H}^{(k+1)} =
+    \sigma\!\left(
+      \hat{D}^{-1/2}\hat{A}\hat{D}^{-1/2}\bd{H}^{(k)} \bd{W}^{(k)}
+    \right)
+  \]
+
+  \[
+    \hat{D}^{-1}\hat{A}
+    \qquad \text{vs} \qquad
+    \hat{D}^{-1/2}\hat{A}\hat{D}^{-1/2}
+  \]
+
+  The symmetric normalization above is the standard GCN choice\slideref{kipf2017}.
+\end{frame}
+
+% TODO: Add a block diagram showing separate self-representation and neighborhood summary before concatenation.
+\begin{frame}{GraphSAGE\slideref{hamilton2017}}
+  \small
+  \[
+    d_{v} = \sum_{u=1}^{N} A_{vu}, \qquad
+    D = \operatorname{diag}(d_{1}, \dots, d_{N}), \qquad
+    \bd{M}^{(k)} = D^{-1}A\bd{H}^{(k)}
+  \]
+
+  \vspace{-0.18cm}
+  \[
+    \bd{m}_{v}^{(k)} =
+    \sum_{u \in \mathcal N(v)}
+    \frac{A_{vu}}{d_{v}} \,
+    \bd{h}_{u}^{(k)}
+  \]
+
+  \vspace{-0.18cm}
+  \[
+    \bd{h}_{v}^{(k+1)} =
+    \sigma\!\left(
+      \left[
+        \bd{h}_{v}^{(k)} \,;\,
+        \bd{m}_{v}^{(k)}
+      \right]
+      \bd{W}^{(k)}
+    \right)
+  \]
+
+  \vspace{-0.18cm}
+  \[
+    \bd{H}^{(k+1)} =
+    \sigma\!\left(
+      \left[
+        \bd{H}^{(k)} \;\;
+        \bd{M}^{(k)}
+      \right]
+      \bd{W}^{(k)}
+    \right)
+  \]
+
+  Self information and neighborhood information remain separate until the learned combination step.
+\end{frame}
+
+% TODO: Add an attention-weighted neighborhood plot or a heatmap of edge attention coefficients.
+\begin{frame}{GAT\slideref{velickovic2018}}
+  \small
+  \[
+    \bd{Z}^{(k)} = \bd{H}^{(k)} \bd{W}^{(k)}, \qquad
+    \bd{z}_{v}^{(k)} = \bd{h}_{v}^{(k)} \bd{W}^{(k)}
+  \]
+
+  \vspace{-0.18cm}
+  \[
+    e_{vu}^{(k)} =
+    \operatorname{LeakyReLU}\!\left(
+      \bd{a}^{\top}
+      \begin{bmatrix}
+        \bd{z}_{v}^{(k)} \\
+        \bd{z}_{u}^{(k)}
+      \end{bmatrix}
+    \right)
+  \]
+
+  \vspace{-0.18cm}
+  \[
+    \alpha_{vu}^{(k)} =
+    \frac{\exp\!\left(e_{vu}^{(k)}\right)}
+    {\sum_{j \in \hat{\mathcal N}(v)} \exp\!\left(e_{vj}^{(k)}\right)}
+  \]
+
+  \vspace{-0.18cm}
+  \[
+    \bd{h}_{v}^{(k+1)} =
+    \sigma\!\left(
+      \sum_{u \in \hat{\mathcal N}(v)}
+      \alpha_{vu}^{(k)} \bd{z}_{u}^{(k)}
+    \right)
+  \]
+
+  \vspace{-0.18cm}
+  \[
+    \bd{H}^{(k+1)} = \sigma\!\left(\Att^{(k)} \bd{Z}^{(k)}\right),
+    \qquad
+    {\left(\Att^{(k)}\right)}_{vu} = \alpha_{vu}^{(k)}
+  \]
+\end{frame}
+
+% TODO: Add a visual that contrasts node outputs, edge scores, and graph readout in the same graph.
+\begin{frame}{Prediction Levels}
+  \small
+  \threecols[0.29\textwidth][0.29\textwidth][0.38\textwidth]{%
+    \textcolor{ntuablue}{Node-level}
+    \[
+      \hat{y}_{v} = g\!\left(\bd{h}_{v}^{(L)}\right)
+    \]
+  }{%
+    \textcolor{ntuablue}{Edge-level}
+    \[
+      \hat{y}_{uv} = g\!\left(\bd{h}_{u}^{(L)}, \bd{h}_{v}^{(L)}\right)
+    \]
+  }{%
+    \textcolor{ntuablue}{Graph-level}
+    \[
+      \bd{h}_{G} =
+      \operatorname{READOUT}\!\left(\{\bd{h}_{v}^{(L)} : v \in V\}\right)
+    \]
+    \[
+      \bd{h}_{G} =
+      \begin{cases}
+        \sum_{v \in V} \bd{h}_{v}^{(L)} \\
+        \frac{1}{N}\sum_{v \in V} \bd{h}_{v}^{(L)}
+      \end{cases}
+    \]
+  }
+\end{frame}
+
+\begin{frame}{Summary}
+  \[
+    \bd{H}^{(k+1)} =
+    \sigma\!\left(P^{(k)} \bd{H}^{(k)} \bd{W}^{(k)}\right)
+  \]
+
+  \textcolor{ntuablue}{Weighted averaging}
+  \[
+    P = \hat{D}^{-1}\hat{A}
+  \]
+
+  \textcolor{ntuablue}{GCN}
+  \[
+    P = \hat{D}^{-1/2}\hat{A}\hat{D}^{-1/2}
+  \]
+
+  \textcolor{ntuablue}{GraphSAGE}
+  \[
+    \bd{H}^{(k+1)} =
+    \sigma\!\left(
+      \left[
+        \bd{H}^{(k)} \;\;
+        D^{-1}A\bd{H}^{(k)}
+      \right]
+      \bd{W}^{(k)}
+    \right)
+  \]
+
+  \textcolor{ntuablue}{GAT}
+  \[
+    \bd{H}^{(k+1)} = \sigma\!\left(\Att^{(k)} \bd{H}^{(k)} \bd{W}^{(k)}\right)
+  \]
+\end{frame}
+
+\begin{frame}{Reference}
+  \small
+  Sanchez-Lengeling, Reif, Pearce, Wiltschko.
+
+  \vspace{0.15cm}
+  \emph{A Gentle Introduction to Graph Neural Networks}. Distill, 2021.
+
+  \vspace{0.2cm}
+  \href{https://distill.pub/2021/understanding-gnns/}{https://distill.pub/2021/understanding-gnns/}
+\end{frame}
+
+\end{document}
