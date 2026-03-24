@@ -22,9 +22,11 @@
 *.xdv
 
 # Local build directories
-latex/**/.build/
+**/.build/
+tmp/
+**/tmp/
 dist/
-presentations/
+.tmp-tests/
 
 # Editor / OS noise
 .DS_Store
@@ -39,8 +41,8 @@ presentations/
 *.pdf
 
 # Keep framework assets, including PDF logos
-!latex/
-!latex/framework/
-!latex/framework/ntua-beamer/
-!latex/framework/ntua-beamer/assets/
-!latex/framework/ntua-beamer/assets/**
+!packages/
+!packages/ntuabeamer-class/
+!packages/ntuabeamer-class/framework/
+!packages/ntuabeamer-class/framework/assets/
+!packages/ntuabeamer-class/framework/assets/**

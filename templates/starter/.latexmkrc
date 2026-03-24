@@ -6,14 +6,10 @@ use File::Basename qw(dirname fileparse);
 use File::Spec;
 use Config;
 
-my $repo_root = abs_path( dirname(__FILE__) );
-my $framework_dir = File::Spec->catdir($repo_root, 'packages', 'ntuabeamer-class', 'framework');
-my $framework_assets_dir = File::Spec->catdir($framework_dir, 'assets');
-
 my $path_sep = $Config{path_sep} || ':';
-my $existing_texinputs = $ENV{TEXINPUTS} // q{};
-$ENV{TEXINPUTS}
-  = $framework_dir . '//' . $path_sep . $framework_assets_dir . '//' . $path_sep . $existing_texinputs;
+my $source_path;
+my $source_dir;
+my $source_name;
 
 sub ntua_detect_source_path {
     for my $arg (@ARGV) {
@@ -28,11 +24,13 @@ sub ntua_detect_source_path {
     return undef;
 }
 
-my $source_path = ntua_detect_source_path();
+$source_path = ntua_detect_source_path();
 
 if ( defined $source_path ) {
     my $existing_bibinputs = $ENV{BIBINPUTS} // q{};
-    my $source_dir = dirname($source_path);
+    $source_dir = dirname($source_path);
+    ($source_name) = fileparse($source_path, qr/\.[^.]*/);
+
     my $source_assets_dir = File::Spec->catdir($source_dir, 'assets');
 
     $aux_dir = File::Spec->catdir($source_dir, '.build');
@@ -40,6 +38,29 @@ if ( defined $source_path ) {
 
     $ENV{BIBINPUTS}
       = $source_dir . $path_sep . $source_assets_dir . $path_sep . $existing_bibinputs;
+}
+
+END {
+    return unless defined $source_dir and defined $source_name;
+
+    unlink map {
+      File::Spec->catfile($source_dir, $source_name . $_)
+    } qw(
+      .aux
+      .bbl
+      .bcf
+      .blg
+      .fdb_latexmk
+      .fls
+      .log
+      .nav
+      .out
+      .pdf
+      .run.xml
+      .snm
+      .synctex.gz
+      .toc
+    );
 }
 
 1;
