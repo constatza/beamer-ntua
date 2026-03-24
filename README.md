@@ -243,6 +243,7 @@ In other words:
 
 Title page:
 - `\makepresentationtitle`
+- `\sectiondivider{<title>}` for centered section-break slides with the standard frame chrome
 
 Logo placement hooks:
 - `\logotopleft{...}`
@@ -313,6 +314,16 @@ Custom-width three-column split:
   C
 }
 ```
+
+### Section Divider
+
+Use this when a deck wants a visual break between major blocks without creating a custom slide layout:
+
+```tex
+\sectiondivider{Message Passing}
+```
+
+The helper uses a normal frame with the standard NTUA title bar and footer, but keeps the slide body minimal by centering only the section title.
 
 ### Frame-Local References
 
