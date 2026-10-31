@@ -33,7 +33,7 @@ A course repo holds `presentations/<slug>/main.tex`, `notes/<slug>/main.tex` and
 
 - `build-course` builds every target into `dist/` and fails on the first problem worth failing on: a target is rebuilt from scratch, a failed target leaves no PDF behind, `dist/` appears only if all targets built, and `TOPICS.toml` paths must exist. `dist/MANIFEST` lists exactly what was built.
 - `release-course <tag>` publishes `dist/` for a pushed tag as a draft, then publishes it. Answer PDFs are excluded unless `RELEASE_ANSWERS=1`.
-- CI for a course is one call to the reusable workflow, which installs the class and tools at the same tag:
+- CI for a course is one call to the reusable workflow. It builds in the `texlive/texlive` medium-scheme container (pinned by digest, plus the CTAN packages in its `tex-packages` input) and installs the class and tools at the same tag:
 
 ```yaml
 jobs:

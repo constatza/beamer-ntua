@@ -16,6 +16,10 @@ on:
         description: beamer-ntua ref providing the class and scripts. Keep equal to the tag this workflow is called at.
         type: string
         default: v0.2.0  # must equal the tag this file is released under
+      tex-packages:
+        description: Space-separated CTAN packages missing from the medium TeX Live scheme.
+        type: string
+        default: pgfplots titlesec
       release-answers:
         description: Attach *_answers.pdf files to the public release.
         type: boolean
@@ -35,15 +39,16 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    # Medium scheme (~1 GB) covers every package the courses use except the few in
+    # `tex-packages`. Pinned by digest so a rebuilt `latest-medium` cannot change results;
+    # refresh the digest by hand (docker pull texlive/texlive:latest-medium; docker inspect).
+    container: texlive/texlive:latest-medium@sha256:b0cf44a1f512f850552be0595ff5f0dc3d9ae85c73ccce1ccec9401eee5b63bb
     steps:
       - uses: actions/checkout@v4
-      - name: Install TeX Live
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            texlive-base texlive-latex-base texlive-latex-recommended texlive-latex-extra \
-            texlive-fonts-recommended texlive-luatex texlive-pictures latexmk biber lmodern \
-            fonts-libertinus
+      - name: Install extra TeX packages
+        env:
+          TEX_PACKAGES: ${{ inputs.tex-packages }}
+        run: tlmgr install $TEX_PACKAGES
       - name: Install class and course tools
         run: |
           curl -fsSL -o /tmp/install-class.sh \
