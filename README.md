@@ -27,6 +27,13 @@ Invoke-RestMethod https://raw.githubusercontent.com/constatza/beamer-ntua/main/s
 
 The Unix installer also puts `build-course` and `release-course` in `~/.local/bin` (override with `NTUA_BEAMER_BIN_DIR`). Pin everything to a release with `NTUA_BEAMER_REF=<tag>`.
 
+## Versions
+
+Two independent version axes:
+
+- **`beamer-ntua` tags** (`v0.3.0`) version the class and course tooling. Both courses depend on the same tag at the same time. Cut one with `scripts/release X.Y.Z`: it sets the version references, runs the checks, then tags and pushes `main` and the tag together. A published tag is never moved; fix forward with a new version.
+- **Course tags** (`v1.2.0` in a course repo) version that course's content. They are unrelated to the `beamer-ntua` tag, and each course releases on its own schedule.
+
 ## Course Repos
 
 A course repo holds `presentations/<slug>/main.tex`, `notes/<slug>/main.tex` and `exercises/<slug>/{main,answers}.tex`, each with its own `src/` and `assets/`.
