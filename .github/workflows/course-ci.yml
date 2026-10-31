@@ -15,7 +15,7 @@ on:
       beamer-ref:
         description: beamer-ntua ref providing the class and scripts. Keep equal to the tag this workflow is called at.
         type: string
-        default: v0.2.0  # must equal the tag this file is released under
+        default: v0.2.1  # must equal the tag this file is released under
       tex-packages:
         description: Space-separated CTAN packages missing from the medium TeX Live scheme.
         type: string
@@ -48,7 +48,15 @@ jobs:
       - name: Install extra TeX packages
         env:
           TEX_PACKAGES: ${{ inputs.tex-packages }}
-        run: tlmgr install $TEX_PACKAGES
+        run: |
+          # a single flaky CTAN mirror must not fail the build: use the redirector and retry
+          tlmgr option repository https://mirror.ctan.org/systems/texlive/tlnet
+          for attempt in 1 2 3; do
+            tlmgr install $TEX_PACKAGES && exit 0
+            echo "tlmgr attempt $attempt failed" >&2
+            sleep $((attempt * 10))
+          done
+          exit 1
       - name: Install class and course tools
         run: |
           curl -fsSL -o /tmp/install-class.sh \
