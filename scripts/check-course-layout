@@ -1,0 +1,33 @@
+#!/bin/sh
+# Static layout checks for a course repo; needs no TeX, so it also runs as a pre-commit hook.
+#   - every tracked target directory under presentations/, notes/, exercises/ has a main.tex
+#   - every target path named in TOPICS.toml exists
+#   - the beamer-ntua tag in .pre-commit-config.yaml equals the one in .github/workflows/ci.yml,
+#     so the local hooks and CI always come from the same release
+set -u
+
+root=$(git rev-parse --show-toplevel 2>/dev/null) || root=$PWD
+cd "$root" || exit 1
+rc=0
+fail() { echo "FAIL $*"; rc=1; }
+
+for d in $(git ls-files -- presentations notes exercises 2>/dev/null | cut -d/ -f1-2 | sort -u); do
+  [ -d "$d" ] || continue
+  [ -f "$d/main.tex" ] || fail "$d has no main.tex"
+done
+
+if [ -f TOPICS.toml ]; then
+  for p in $(grep -o '"\(presentations\|notes\|exercises\)/[^"]*"' TOPICS.toml | tr -d '"' | sort -u); do
+    [ -e "$p" ] || fail "TOPICS.toml names missing path: $p"
+  done
+fi
+
+if [ -f .pre-commit-config.yaml ] && [ -f .github/workflows/ci.yml ]; then
+  ci_ref=$(sed -n 's/.*course-ci\.yml@//p' .github/workflows/ci.yml | head -n 1)
+  hook_ref=$(awk '/constatza\/beamer-ntua/ {f=1; next} f && /rev:/ {print $2; exit}' .pre-commit-config.yaml)
+  if [ -n "$ci_ref" ] && [ -n "$hook_ref" ] && [ "$ci_ref" != "$hook_ref" ]; then
+    fail "beamer-ntua pin differs: ci.yml uses $ci_ref, .pre-commit-config.yaml uses $hook_ref"
+  fi
+fi
+
+exit $rc

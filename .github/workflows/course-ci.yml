@@ -15,7 +15,7 @@ on:
       beamer-ref:
         description: beamer-ntua ref providing the class and scripts. Keep equal to the tag this workflow is called at.
         type: string
-        default: v0.2.1  # must equal the tag this file is released under
+        default: v0.3.0  # must equal the tag this file is released under
       tex-packages:
         description: Space-separated CTAN packages missing from the medium TeX Live scheme.
         type: string

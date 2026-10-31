@@ -5,7 +5,7 @@ REPO_SLUG="${NTUA_BEAMER_REPO:-constatza/beamer-ntua}"
 REPO_REF="${NTUA_BEAMER_REF:-main}"
 BASE_URL="${NTUA_BEAMER_BASE_URL:-https://raw.githubusercontent.com/$REPO_SLUG/$REPO_REF}"
 BIN_DIR="${NTUA_BEAMER_BIN_DIR:-$HOME/.local/bin}"
-COURSE_TOOLS="build-course release-course"
+COURSE_TOOLS="build-course release-course check-course-layout"
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || {

@@ -9,6 +9,7 @@
 #   - dist/ only exists after every target built; it is moved into place at the end
 #   - dist/MANIFEST lists exactly the PDFs built, named <kind>_<slug>[_answers].pdf
 #   - a LaTeX log tail is printed for every failing target
+#   - check-course-layout must pass (every target has a main.tex, TOPICS.toml paths exist)
 set -u
 
 root=$(git rev-parse --show-toplevel 2>/dev/null) || root=$PWD
@@ -64,19 +65,15 @@ if [ "$built" -eq 0 ] && [ "$rc" -eq 0 ]; then
   rc=1
 fi
 
-# Every target path named in TOPICS.toml must exist, so the index cannot rot.
-if [ -f TOPICS.toml ]; then
-  for p in $(grep -o '"\(presentations\|notes\|exercises\)/[^"]*"' TOPICS.toml | tr -d '"' | sort -u); do
-    [ -e "$p" ] || { echo "FAIL TOPICS.toml names missing path: $p"; rc=1; }
-  done
-fi
+# Layout and TOPICS.toml checks (shared with the pre-commit hook).
+"$(dirname "$0")/check-course-layout" || rc=1
 
 if [ "$rc" -ne 0 ]; then
   rm -rf dist.tmp
   exit 1
 fi
 
-(cd dist.tmp && ls -1 *.pdf >../dist.manifest)
+(cd dist.tmp && ls -1 -- *.pdf >../dist.manifest)
 mv dist.manifest dist.tmp/MANIFEST
 mv dist.tmp dist
 echo "dist/ ready: $built PDFs"

@@ -3,7 +3,7 @@
 # Uses plain `article` documents and a stub `gh`, so it needs only latexmk and git.
 set -eu
 
-scripts=$(CDPATH= cd -- "$(dirname "$0")/../scripts" && pwd)
+scripts=$(CDPATH='' cd -- "$(dirname "$0")/../scripts" && pwd)
 work=$(mktemp -d "${TMPDIR:-/tmp}/course-tooling.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 
@@ -42,6 +42,11 @@ tex ok >presentations/a/main.tex
 printf '[topics.u]\nowner = "exercises/ghost"\n' >>TOPICS.toml
 sh "$scripts/build-course" >/dev/null && fail "dangling TOPICS.toml path accepted"
 git checkout -q TOPICS.toml
+
+# 3b. a tracked target directory without main.tex fails the layout check
+mkdir -p presentations/empty && : >presentations/empty/notes.txt && git add presentations/empty
+sh "$scripts/check-course-layout" >/dev/null && fail "target without main.tex accepted"
+git rm -qf presentations/empty/notes.txt
 
 # 4. release uses a stub gh; answers are excluded by default
 sh "$scripts/build-course" >/dev/null || fail "rebuild failed"

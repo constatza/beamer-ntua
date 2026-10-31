@@ -38,9 +38,19 @@ A course repo holds `presentations/<slug>/main.tex`, `notes/<slug>/main.tex` and
 ```yaml
 jobs:
   ci:
-    uses: constatza/beamer-ntua/.github/workflows/course-ci.yml@v0.2.1
+    uses: constatza/beamer-ntua/.github/workflows/course-ci.yml@v0.3.0
     permissions: {contents: write}
 ```
+
+### Local checks with prek
+
+`.pre-commit-hooks.yaml` exposes three hooks for course repos (any [prek](https://github.com/j178/prek) or pre-commit install works). They need no TeX, so they run in milliseconds:
+
+- `course-layout`: every target has a `main.tex`, `TOPICS.toml` paths exist, and the tag pinned in `.pre-commit-config.yaml` equals the one in `.github/workflows/ci.yml`.
+- `no-built-artifacts`: refuses `.build/`, `dist/`, `main.pdf`, `answers.pdf` and gifs.
+- `no-ai-attribution`: commit-msg check against AI attribution lines.
+
+A course adds them next to the generic hooks (see this repo's own `.pre-commit-config.yaml`) and runs `prek install -t pre-commit -t commit-msg` once. Building the PDFs stays in `build-course` and CI.
 
 After that, this is enough to start:
 

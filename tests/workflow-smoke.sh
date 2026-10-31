@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-repo_root=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+repo_root=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
 smoke_root=${NTUA_SMOKE_ROOT:-"$repo_root/.tmp-tests/workflow"}
 bin_dir="$smoke_root/bin"
 support_dir="$smoke_root/support"
