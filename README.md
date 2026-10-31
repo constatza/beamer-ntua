@@ -31,8 +31,19 @@ The Unix installer also puts `build-course` and `release-course` in `~/.local/bi
 
 Two independent version axes:
 
-- **`beamer-ntua` tags** (`v0.3.0`) version the class and course tooling. Both courses depend on the same tag at the same time. Cut one with `scripts/release X.Y.Z`: it sets the version references, runs the checks, then tags and pushes `main` and the tag together. A published tag is never moved; fix forward with a new version.
-- **Course tags** (`v1.2.0` in a course repo) version that course's content. They are unrelated to the `beamer-ntua` tag, and each course releases on its own schedule.
+- **`beamer-ntua` tags** (for example `v0.3.1`) version the class and course tooling. Both courses depend on the same tag. A release is a plain `git tag -a vX.Y.Z && git push origin main vX.Y.Z`; a published tag is never moved, so fix forward with a new version.
+- **Course tags** (`v1.2.0` in a course repo) version that course's content and are unrelated to the `beamer-ntua` tag.
+
+A course pins `beamer-ntua` in two places that must match: the `@<tag>` of the shared workflow in `.github/workflows/ci.yml` and the `rev:` of the `constatza/beamer-ntua` entry in `.pre-commit-config.yaml`. The workflow reads the class version from the second, and `build-course` fails if the two differ.
+
+To bump both in one PR per course, use [Renovate](https://docs.renovatebot.com) (GitHub, GitLab, Gitea or self-hosted) with this `renovate.json`:
+
+```json
+{
+  "extends": ["config:recommended"],
+  "packageRules": [{"matchPackageNames": ["constatza/beamer-ntua"], "groupName": "beamer-ntua"}]
+}
+```
 
 ## Course Repos
 
@@ -45,7 +56,7 @@ A course repo holds `presentations/<slug>/main.tex`, `notes/<slug>/main.tex` and
 ```yaml
 jobs:
   ci:
-    uses: constatza/beamer-ntua/.github/workflows/course-ci.yml@v0.3.0
+    uses: constatza/beamer-ntua/.github/workflows/course-ci.yml@<tag>
     permissions: {contents: write}
 ```
 
@@ -322,3 +333,21 @@ kpsewhich beamer.cls
 - The class can be used in three ways: globally installed into `TEXMFHOME`, copied locally next to a document, or vendored through `ntua-beamer new`.
 - The CLI is path-based and does not assume deck names or fixed project directories.
 - CI generates a fresh starter project and publishes its PDF as a GitHub artifact instead of committing demo PDFs.
+
+## Other CI hosts
+
+The shared workflow only calls the scripts above, so porting it is mechanical. A GitLab sketch (not run here):
+
+```yaml
+build:
+  image: texlive/texlive:latest-medium@sha256:<digest from course-ci.yml>
+  script:
+    - tlmgr install pgfplots titlesec
+    - ref=$(awk '/constatza\/beamer-ntua/ {f=1; next} f && /rev:/ {print $2; exit}' .pre-commit-config.yaml)
+    - curl -fsSL -o /tmp/install-class.sh "https://raw.githubusercontent.com/constatza/beamer-ntua/$ref/scripts/install-class.sh"
+    - NTUA_BEAMER_REF=$ref sh /tmp/install-class.sh
+    - export PATH="$HOME/.local/bin:$PATH" && build-course
+  artifacts: {paths: [dist/]}
+```
+
+Only the publish step is host-specific: `release-course` uses `gh`; on GitLab use `glab release create` or a `release:` job with `dist/`.
