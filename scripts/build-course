@@ -1,0 +1,82 @@
+#!/bin/sh
+# Build every deck, note and exercise sheet of a course repo into dist/.
+#
+# Targets (each a directory with main.tex; exercises may also have answers.tex):
+#   presentations/<slug>/main.tex   notes/<slug>/main.tex   exercises/<slug>/{main,answers}.tex
+#
+# Guarantees, so a failed or skipped build can never ship an old PDF:
+#   - each target's previous .build/<stem>.pdf is deleted before it is rebuilt
+#   - dist/ only exists after every target built; it is moved into place at the end
+#   - dist/MANIFEST lists exactly the PDFs built, named <kind>_<slug>[_answers].pdf
+#   - a LaTeX log tail is printed for every failing target
+set -u
+
+root=$(git rev-parse --show-toplevel 2>/dev/null) || root=$PWD
+cd "$root" || exit 1
+
+LOG_TAIL_LINES=40
+
+rm -rf dist dist.tmp
+mkdir dist.tmp
+rc=0
+built=0
+
+for t in presentations/*/main.tex notes/*/main.tex exercises/*/main.tex exercises/*/answers.tex; do
+  [ -f "$t" ] || continue
+  d=$(dirname "$t")
+  stem=$(basename "$t" .tex)
+  slug=$(basename "$d")
+  case "$d" in
+    presentations/*) kind=presentation ;;
+    notes/*) kind=note ;;
+    exercises/*) kind=exercise ;;
+  esac
+  name="${kind}_${slug}"
+  [ "$stem" = answers ] && name="${name}_answers"
+
+  mkdir -p "$d/.build"
+  rm -f "$d/.build/$stem.pdf"
+
+  if grep -q 'ntuabeamer}' "$t" && ! kpsewhich ntuabeamer.cls >/dev/null 2>&1; then
+    echo "FAIL $d/$stem.tex (ntuabeamer class not installed; run install-class.sh)"
+    rc=1
+    continue
+  fi
+
+  # `-pdf` would override a target's own engine (e.g. lualatex); that is set in its .latexmkrc
+  if grep -q 'pdf_mode' "$d/.latexmkrc" 2>/dev/null; then flag=; else flag=-pdf; fi
+
+  if (cd "$d" && latexmk $flag -interaction=nonstopmode -halt-on-error \
+        -outdir=.build -auxdir=.build "$stem.tex" >.build/latexmk.out 2>&1) \
+      && [ -f "$d/.build/$stem.pdf" ]; then
+    cp "$d/.build/$stem.pdf" "dist.tmp/$name.pdf"
+    echo "ok   $d/$stem.tex"
+    built=$((built + 1))
+  else
+    echo "FAIL $d/$stem.tex"
+    tail -n "$LOG_TAIL_LINES" "$d/.build/latexmk.out" | sed 's/^/     | /'
+    rc=1
+  fi
+done
+
+if [ "$built" -eq 0 ] && [ "$rc" -eq 0 ]; then
+  echo "FAIL no targets found under presentations/, notes/ or exercises/"
+  rc=1
+fi
+
+# Every target path named in TOPICS.toml must exist, so the index cannot rot.
+if [ -f TOPICS.toml ]; then
+  for p in $(grep -o '"\(presentations\|notes\|exercises\)/[^"]*"' TOPICS.toml | tr -d '"' | sort -u); do
+    [ -e "$p" ] || { echo "FAIL TOPICS.toml names missing path: $p"; rc=1; }
+  done
+fi
+
+if [ "$rc" -ne 0 ]; then
+  rm -rf dist.tmp
+  exit 1
+fi
+
+(cd dist.tmp && ls -1 *.pdf >../dist.manifest)
+mv dist.manifest dist.tmp/MANIFEST
+mv dist.tmp dist
+echo "dist/ ready: $built PDFs"

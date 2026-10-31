@@ -4,6 +4,8 @@ set -eu
 REPO_SLUG="${NTUA_BEAMER_REPO:-constatza/beamer-ntua}"
 REPO_REF="${NTUA_BEAMER_REF:-main}"
 BASE_URL="${NTUA_BEAMER_BASE_URL:-https://raw.githubusercontent.com/$REPO_SLUG/$REPO_REF}"
+BIN_DIR="${NTUA_BEAMER_BIN_DIR:-$HOME/.local/bin}"
+COURSE_TOOLS="build-course release-course"
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -75,6 +77,12 @@ for asset in mgroup.png ntua.png school-civil-engineering.jpg; do
   download_file "$tmpdir/assets/$asset" "$BASE_URL/packages/ntuabeamer-class/framework/assets/$asset"
 done
 
+# Download everything before touching the install locations, so a failed
+# download leaves the previous install intact.
+for tool in $COURSE_TOOLS; do
+  download_file "$tmpdir/$tool" "$BASE_URL/scripts/$tool"
+done
+
 texmfhome="$(resolve_texmfhome)"
 install_dir="$texmfhome/tex/latex/ntuabeamer"
 
@@ -87,6 +95,13 @@ cp "$tmpdir/macros.tex" "$install_dir/macros.tex"
 cp "$tmpdir/theme.tex" "$install_dir/theme.tex"
 cp "$tmpdir/assets/"* "$install_dir/"
 
+mkdir -p "$BIN_DIR"
+for tool in $COURSE_TOOLS; do
+  cp "$tmpdir/$tool" "$BIN_DIR/$tool"
+  chmod 755 "$BIN_DIR/$tool"
+done
+
 refresh_tex_db
 
 printf '%s\n' "Installed class -> $install_dir"
+printf '%s\n' "Installed course tools -> $BIN_DIR ($COURSE_TOOLS)"

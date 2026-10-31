@@ -29,6 +29,8 @@ jobs:
 
       - name: Run workflow smoke test
         run: sh tests/workflow-smoke.sh
+      - name: Run course tooling smoke test
+        run: sh tests/course-tooling-smoke.sh
 
       - name: Upload starter PDF
         if: success()

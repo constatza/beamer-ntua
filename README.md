@@ -25,6 +25,23 @@ Windows PowerShell:
 Invoke-RestMethod https://raw.githubusercontent.com/constatza/beamer-ntua/main/scripts/install-class.ps1 | Invoke-Expression
 ```
 
+The Unix installer also puts `build-course` and `release-course` in `~/.local/bin` (override with `NTUA_BEAMER_BIN_DIR`). Pin everything to a release with `NTUA_BEAMER_REF=<tag>`.
+
+## Course Repos
+
+A course repo holds `presentations/<slug>/main.tex`, `notes/<slug>/main.tex` and `exercises/<slug>/{main,answers}.tex`, each with its own `src/` and `assets/`.
+
+- `build-course` builds every target into `dist/` and fails on the first problem worth failing on: a target is rebuilt from scratch, a failed target leaves no PDF behind, `dist/` appears only if all targets built, and `TOPICS.toml` paths must exist. `dist/MANIFEST` lists exactly what was built.
+- `release-course <tag>` publishes `dist/` for a pushed tag as a draft, then publishes it. Answer PDFs are excluded unless `RELEASE_ANSWERS=1`.
+- CI for a course is one call to the reusable workflow, which installs the class and tools at the same tag:
+
+```yaml
+jobs:
+  ci:
+    uses: constatza/beamer-ntua/.github/workflows/course-ci.yml@v0.2.0
+    permissions: {contents: write}
+```
+
 After that, this is enough to start:
 
 ```tex

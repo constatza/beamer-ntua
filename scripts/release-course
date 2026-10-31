@@ -1,0 +1,60 @@
+#!/bin/sh
+# Publish dist/ (made by build-course) as a GitHub release for an existing tag.
+#
+#   release-course <tag>
+#
+# Builds nothing. The release is created as a draft with all assets attached and only
+# then published, so a failure never leaves a half-filled public release; the draft is
+# deleted on any failure. Answer PDFs (*_answers.pdf) are skipped unless RELEASE_ANSWERS=1.
+set -eu
+
+tag="${1:?usage: release-course <tag>}"
+
+die() { echo "error: $*" >&2; exit 1; }
+
+command -v gh >/dev/null 2>&1 || die "gh not found"
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+[ -f dist/MANIFEST ] || die "dist/MANIFEST missing; run build-course first"
+git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1 \
+  || die "tag $tag is not on origin; push it first"
+
+set --
+: >dist/.release-files
+while read -r f; do
+  case "$f" in
+    *_answers.pdf) [ "${RELEASE_ANSWERS:-0}" = 1 ] || continue ;;
+  esac
+  echo "$f" >>dist/.release-files
+done <dist/MANIFEST
+while read -r f; do set -- "$@" "dist/$f"; done <dist/.release-files
+[ "$#" -gt 0 ] || die "nothing to release"
+
+repo="${GITHUB_REPOSITORY:-$(gh repo view --json nameWithOwner -q .nameWithOwner)}"
+notes=$(mktemp "${TMPDIR:-/tmp}/release-notes.XXXXXX")
+created=0
+cleanup() {
+  rm -f "$notes" dist/.release-files
+  [ "$created" -eq 1 ] && gh release delete "$tag" --yes >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+{
+  echo "# $repo $tag"
+  echo
+  echo "Built from \`$(git rev-parse --short "refs/tags/$tag^{commit}")\` with beamer-ntua ${NTUA_BEAMER_REF:-main}."
+  echo
+  for a in "$@"; do echo "- $(basename "$a")"; done
+} >"$notes"
+
+case "$tag" in
+  *-alpha*|*-beta*|*-rc*) pre=--prerelease ;;
+  *) pre= ;;
+esac
+
+# shellcheck disable=SC2086
+gh release create "$tag" --draft --verify-tag --title "$tag" --notes-file "$notes" $pre "$@"
+created=1
+gh release edit "$tag" --draft=false
+created=0
+echo "released $tag with $# assets"
