@@ -38,7 +38,7 @@ A course repo holds `presentations/<slug>/main.tex`, `notes/<slug>/main.tex` and
 ```yaml
 jobs:
   ci:
-    uses: constatza/beamer-ntua/.github/workflows/course-ci.yml@v0.2.0
+    uses: constatza/beamer-ntua/.github/workflows/course-ci.yml@v0.2.1
     permissions: {contents: write}
 ```
 
